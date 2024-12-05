@@ -22,12 +22,8 @@ _**Original Authors:** Yafu Li, Qintong Li, Leyang Cui, Wei Bi, Zhilin Wang, Lon
 
 ## 📌 Table of Contents
 - [Reproducibility Study](#-reproducibility-study)
-- [Introduction](#-introduction)
-- [Activities](#-activities)
-- [Dataset](#-dataset)
 - [Reproducibility Instructions](#-reproducibility-instructions)
 - [Results](#-results)
-- [Citation](#-citation)
 
 ## 🚀 Reproducibility Study
 This repository is part of a reproducibility study for the paper "[MAGE: Machine-generated Text Detection in the Wild](https://aclanthology.org/2024.acl-long.3/)". These instructions assist researchers and practitioners in verifying and reproducing the results presented in the original study.
