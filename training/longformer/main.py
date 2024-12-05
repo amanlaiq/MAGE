@@ -44,6 +44,8 @@ from transformers import (
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version
 from transformers.utils.versions import require_version
+from sklearn.metrics import roc_auc_score, recall_score
+from scipy.special import softmax
 
 
 os.environ['CURL_CA_BUNDLE'] = ''
@@ -494,55 +496,81 @@ def main():
 
     # You can define your custom compute_metrics function. It takes an `EvalPrediction` object (a namedtuple with a
     # predictions and label_ids field) and has to return a dictionary string to float.
-    def compute_metrics(p: EvalPrediction):
-        preds = p.predictions[0] if isinstance(
-            p.predictions, tuple) else p.predictions
-        preds = np.squeeze(
-            preds) if is_regression else np.argmax(preds, axis=1)
-        # if data_args.task_name is not None:
-        #     result = metric.compute(predictions=preds, references=p.label_ids)
-        #     if len(result) > 1:
-        #         result["combined_score"] = np.mean(list(result.values())).item()
-        #     return result
-        if is_regression:
-            return {"mse": ((preds - p.label_ids) ** 2).mean().item()}
-        else:
-            accuracy = (preds == p.label_ids).astype(np.float32).mean().item()
-            TP = ((preds == p.label_ids) & (preds == 1)
-                  ).astype(np.float32).sum().item()
-            TN = ((preds == p.label_ids) & (preds == 0)
-                  ).astype(np.float32).sum().item()
-            FN = ((preds != p.label_ids) & (preds == 0)
-                  ).astype(np.float32).sum().item()
-            FP = ((preds != p.label_ids) & (preds == 1)
-                  ).astype(np.float32).sum().item()
+    # def compute_metrics(p: EvalPrediction):
+    #     preds = p.predictions[0] if isinstance(
+    #         p.predictions, tuple) else p.predictions
+    #     preds = np.squeeze(
+    #         preds) if is_regression else np.argmax(preds, axis=1)
+    #     # if data_args.task_name is not None:
+    #     #     result = metric.compute(predictions=preds, references=p.label_ids)
+    #     #     if len(result) > 1:
+    #     #         result["combined_score"] = np.mean(list(result.values())).item()
+    #     #     return result
+    #     if is_regression:
+    #         return {"mse": ((preds - p.label_ids) ** 2).mean().item()}
+    #     else:
+    #         accuracy = (preds == p.label_ids).astype(np.float32).mean().item()
+    #         TP = ((preds == p.label_ids) & (preds == 1)
+    #               ).astype(np.float32).sum().item()
+    #         TN = ((preds == p.label_ids) & (preds == 0)
+    #               ).astype(np.float32).sum().item()
+    #         FN = ((preds != p.label_ids) & (preds == 0)
+    #               ).astype(np.float32).sum().item()
+    #         FP = ((preds != p.label_ids) & (preds == 1)
+    #               ).astype(np.float32).sum().item()
 
-            # metric_precision = load_metric("precision", cache_dir='./evaluate')
-            # precision = metric_precision.compute(predictions=preds, references=p.label_ids, average='macro')
-            # metric_recall = load_metric("recall", cache_dir='./evaluate')
-            # recall = metric_recall.compute(predictions=preds, references=p.label_ids, average='macro')
-            # metric_fscore = load_metric("f1", cache_dir='./evaluate')
-            # f1score = metric_fscore.compute(predictions=preds, references=p.label_ids, average='macro')
-            # print("-"*100)
-            try:
-                precision = TP / (TP+FP)
-                recall = TP / (TP+FN)
-                f1score = 2*precision*recall/(precision+recall)
-                print(f'precision:{precision}/recall"{recall}/f1:{f1score}')
-                precision = TN / (TN+FN)
-                recall = TN / (TN+FP)
-                f1score = 2*precision*recall/(precision+recall)
-                print(f'precision:{precision}/recall"{recall}/f1:{f1score}')
-            except:
-                print("float division by zero ...")
-            # return {
-            #     "precision": precision,
-            #     "recall": recall,
-            #     "f1": f1score
-            #     }
-            return {
-                "accuracy": accuracy
-            }
+    #         # metric_precision = load_metric("precision", cache_dir='./evaluate')
+    #         # precision = metric_precision.compute(predictions=preds, references=p.label_ids, average='macro')
+    #         # metric_recall = load_metric("recall", cache_dir='./evaluate')
+    #         # recall = metric_recall.compute(predictions=preds, references=p.label_ids, average='macro')
+    #         # metric_fscore = load_metric("f1", cache_dir='./evaluate')
+    #         # f1score = metric_fscore.compute(predictions=preds, references=p.label_ids, average='macro')
+    #         # print("-"*100)
+    #         try:
+    #             precision = TP / (TP+FP)
+    #             recall = TP / (TP+FN)
+    #             f1score = 2*precision*recall/(precision+recall)
+    #             print(f'precision:{precision}/recall"{recall}/f1:{f1score}')
+    #             precision = TN / (TN+FN)
+    #             recall = TN / (TN+FP)
+    #             f1score = 2*precision*recall/(precision+recall)
+    #             print(f'precision:{precision}/recall"{recall}/f1:{f1score}')
+    #         except:
+    #             print("float division by zero ...")
+    #         # return {
+    #         #     "precision": precision,
+    #         #     "recall": recall,
+    #         #     "f1": f1score
+    #         #     }
+    #         return {
+    #             "accuracy": accuracy
+    #         }
+
+    # This `compute_metrics` function evaluates the model's performance by calculating various metrics. 
+    # It uses `sklearn.metrics` for robust and efficient computation of accuracy, AUROC, and recall for both human-written and machine-generated content. 
+    # The function provides a comprehensive overview of the model's classification effectiveness by including average recall across classes, 
+    # helping to assess model bias towards any specific class. This structured output is crucial for detailed performance analysis in binary classification tasks.
+    def compute_metrics(p: EvalPrediction):
+        logits = p.predictions  # Use raw logits or probabilities
+        labels = p.label_ids
+        
+        # Convert logits to probabilities (if needed)
+        probs = logits if logits.shape[1] == 1 else softmax(logits, axis=1)[:, 1]
+        
+        preds = np.argmax(logits, axis=1)  # Hard predictions for recall, accuracy
+        
+        auc = roc_auc_score(labels, probs)  # Use probabilities for AUROC
+        human_recall = recall_score(labels, preds, pos_label=1)  # Human-written
+        machine_recall = recall_score(labels, preds, pos_label=0)  # Machine-generated
+        avg_recall = (human_recall + machine_recall) / 2
+
+        return {
+            "accuracy": (preds == labels).mean(),
+            "AUROC": auc,
+            "Human Recall": human_recall,
+            "Machine Recall": machine_recall,
+            "Avg Recall": avg_recall,
+        }
     # Data collator will default to DataCollatorWithPadding, so we change it if we already did the padding.
     if data_args.pad_to_max_length:
         data_collator = default_data_collator

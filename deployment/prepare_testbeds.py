@@ -69,7 +69,7 @@ model_sets = [
 ]
 
 data_dir = sys.argv[1]
-dataset = load_dataset("yaful/DeepfakeTextDetect")
+dataset = load_dataset("yaful/DeepfakeTextDetect", trust_remote_code=True)
 if not os.path.exists(data_dir):
     os.makedirs(data_dir)
 """
