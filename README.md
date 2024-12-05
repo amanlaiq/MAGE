@@ -59,7 +59,12 @@ python deployment/prepare_testbeds.py path_to_data_folder
 ### 5. Running the Model
 Execute the main model training and evaluation script (Make sure to include the locations/paths for training data, validation data, and testing data):
 
-python training/longformer/main.py --model_name_or_path allenai/longformer-base-4096 --train_file path_to_train.csv --validation_file path_to_valid.csv --test_file path_to_test.csv --output_dir results/my_test_results --do_train --do_eval --do_predict --overwrite_output_dir --fp16
+python training/longformer/main.py --model_name_or_path allenai/longformer-base-4096 
+--train_file path_to_train.csv 
+--validation_file path_to_valid.csv 
+--test_file path_to_test.csv 
+--output_dir results/my_test_results 
+--do_train --do_eval --do_predict --overwrite_output_dir --fp16
 
 
 ### 6. Examining the Results
