@@ -487,7 +487,8 @@ def main():
         for index in random.sample(range(len(train_dataset)), 3):
             logger.info(
                 f"Sample {index} of the training set: {train_dataset[index]}.")
-
+            
+    # Below is the authors compute_metric function, we commented this function and created our own for the reproducibility report
     # Get the metric function
     # if data_args.task_name is not None:
     #     metric = load_metric("glue", data_args.task_name)
